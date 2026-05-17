@@ -1,0 +1,162 @@
+{% extends "appbuilder/base.html" %}
+
+{% block content %}
+<div class="container" style="max-width: 1100px; margin-top: 20px;">
+
+    <div class="row">
+        <!-- IZQUIERDA: cliente + agregar producto -->
+        <div class="col-md-5">
+
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>Cliente</strong></div>
+                <div class="panel-body">
+                    <select id="cliente" class="form-control">
+                        <option value="">-- Selecciona un cliente --</option>
+                        {% for c in clientes %}
+                        <option value="{{ c.id }}">{{ c.nombre }} {{ c.apellido }}</option>
+                        {% endfor %}
+                    </select>
+                    <a href="/clientemodelview/add" target="_blank" class="btn btn-success btn-sm" style="margin-top: 8px;">
+                        <i class="fa fa-plus"></i> Agregar nuevo cliente
+                    </a>
+                </div>
+            </div>
+
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>Agregar producto</strong></div>
+                <div class="panel-body">
+                    <label>Producto</label>
+                    <select id="producto" class="form-control" style="margin-bottom: 10px;">
+                        {% for p in productos %}
+                        <option value="{{ p.id }}"
+                                data-precio="{{ p.precio }}"
+                                data-nombre="{{ p.nombre }}">
+                            {{ p.nombre }} — Bs. {{ p.precio }}
+                        </option>
+                        {% endfor %}
+                    </select>
+
+                    <label>Cantidad</label>
+                    <input type="number" id="cantidad" class="form-control" min="1" value="1" style="margin-bottom: 10px;">
+
+                    <button type="button" id="btn-add" class="btn btn-primary btn-block">
+                        <i class="fa fa-plus"></i> Agregar al carrito
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- DERECHA: carrito -->
+        <div class="col-md-7">
+            <div class="panel panel-default">
+                <div class="panel-heading"><strong>Carrito</strong></div>
+                <div class="panel-body">
+                    <table id="carrito" class="table table-striped">
+                        <thead>
+                            <tr>
+                                <th>Producto</th>
+                                <th style="width: 80px;">Cant.</th>
+                                <th style="width: 100px;">P. Unit</th>
+                                <th style="width: 100px;">Subtotal</th>
+                                <th style="width: 50px;"></th>
+                            </tr>
+                        </thead>
+                        <tbody id="carrito-body">
+                            <tr id="vacio"><td colspan="5" class="text-center text-muted">Carrito vacío</td></tr>
+                        </tbody>
+                        <tfoot>
+                            <tr>
+                                <th colspan="3" style="text-align: right; font-size: 18px;">TOTAL</th>
+                                <th id="total" style="font-size: 18px; color: #2563eb;">Bs. 0.00</th>
+                                <th></th>
+                            </tr>
+                        </tfoot>
+                    </table>
+
+                    <button type="button" id="btn-save" class="btn btn-success btn-lg btn-block">
+                        <i class="fa fa-save"></i> Guardar Venta
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+const carrito = [];
+
+function renderCarrito() {
+    const tbody = document.getElementById('carrito-body');
+    if (carrito.length === 0) {
+        tbody.innerHTML = '<tr id="vacio"><td colspan="5" class="text-center text-muted">Carrito vacío</td></tr>';
+        document.getElementById('total').textContent = 'Bs. 0.00';
+        return;
+    }
+    tbody.innerHTML = '';
+    let total = 0;
+    carrito.forEach((item, idx) => {
+        total += item.subtotal;
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+            <td>${item.nombre}</td>
+            <td>${item.cantidad}</td>
+            <td>Bs. ${item.precio.toFixed(2)}</td>
+            <td>Bs. ${item.subtotal.toFixed(2)}</td>
+            <td><button class="btn btn-danger btn-xs" onclick="quitarItem(${idx})"><i class="fa fa-times"></i></button></td>
+        `;
+        tbody.appendChild(tr);
+    });
+    document.getElementById('total').textContent = 'Bs. ' + total.toFixed(2);
+}
+
+function quitarItem(idx) {
+    carrito.splice(idx, 1);
+    renderCarrito();
+}
+
+document.getElementById('btn-add').addEventListener('click', () => {
+    const sel = document.getElementById('producto');
+    if (!sel.value) { alert('Selecciona un producto'); return; }
+    const opt = sel.options[sel.selectedIndex];
+    const cantidad = parseInt(document.getElementById('cantidad').value) || 1;
+    if (cantidad < 1) { alert('Cantidad inválida'); return; }
+    const precio = parseFloat(opt.dataset.precio);
+    carrito.push({
+        producto_id: parseInt(opt.value),
+        nombre: opt.dataset.nombre,
+        cantidad: cantidad,
+        precio: precio,
+        subtotal: cantidad * precio
+    });
+    renderCarrito();
+    document.getElementById('cantidad').value = 1;
+});
+
+document.getElementById('btn-save').addEventListener('click', async () => {
+    const cliente_id = document.getElementById('cliente').value;
+    if (!cliente_id) { alert('Selecciona un cliente'); return; }
+    if (carrito.length === 0) { alert('Agrega al menos un producto al carrito'); return; }
+
+    const detalles = carrito.map(c => ({ producto_id: c.producto_id, cantidad: c.cantidad }));
+
+    try {
+        const res = await fetch('/venta/guardar/', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ cliente_id: cliente_id, detalles: detalles })
+        });
+
+        if (res.ok) {
+            const data = await res.json();
+            alert('Venta #' + data.venta_id + ' guardada correctamente');
+            window.location = '/ventamodelview/list/';
+        } else {
+            const err = await res.json().catch(() => ({}));
+            alert('Error: ' + (err.error || 'no se pudo guardar la venta'));
+        }
+    } catch (e) {
+        alert('Error de red: ' + e.message);
+    }
+});
+</script>
+{% endblock %}

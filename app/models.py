@@ -65,12 +65,6 @@ class Producto(Model):
         back_populates="productos"
     )
 
-    # RELACION CON VENTA
-    ventas = relationship(
-        "Venta",
-        back_populates="producto"
-    )
-
     # RELACION CON DETALLEVENTA
     detalleventas = relationship(
         "Detalleventa",
@@ -110,28 +104,15 @@ class Venta(Model):
         nullable=False
     )
 
-    producto_id = Column(
-        Integer,
-        ForeignKey("producto.id"),
-        nullable=False
-    )
-
-    cantidad = Column(Integer, nullable=False)
-
-    precio_unitario = Column(
-        Numeric(10, 2),
+    fecha = Column(
+        DateTime,
+        default=datetime.datetime.utcnow,
         nullable=False
     )
 
     total = Column(
         Numeric(10, 2),
-        nullable=False
-    )
-
-    fecha = Column(
-        DateTime,
-        default=datetime.datetime.utcnow,
-        onupdate=datetime.datetime.utcnow,
+        default=0,
         nullable=False
     )
 
@@ -141,17 +122,15 @@ class Venta(Model):
         back_populates="ventas"
     )
 
-    # RELACION CON PRODUCTO
-    producto = relationship(
-        "Producto",
-        back_populates="ventas"
-    )
-
     # RELACION CON DETALLEVENTA
     detalles = relationship(
         "Detalleventa",
-        back_populates="venta"
+        back_populates="venta",
+        cascade="all, delete-orphan"
     )
+
+    def __repr__(self):
+        return f"Venta #{self.id}"
 
 
 class Detalleventa(Model):
