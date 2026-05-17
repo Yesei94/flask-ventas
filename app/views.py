@@ -379,27 +379,27 @@ class ReporteView(BaseView):
 # =====================================================
 
 appbuilder.add_view(
+    ClienteModelView,
+    "Clientes",
+    icon="fa-users",
+    category="Configuraciones",
+    category_icon="fa-cog"
+)
+
+appbuilder.add_view(
     CategoriaModelView,
     "Categorias",
-    icon="fa-info",
+    icon="fa-tags",
     category="Configuraciones",
-    category_icon="fa-info"
+    category_icon="fa-cog"
 )
 
 appbuilder.add_view(
     ProductoModelView,
     "Productos",
-    icon="fa-info",
+    icon="fa-cube",
     category="Configuraciones",
-    category_icon="fa-info"
-)
-
-appbuilder.add_view(
-    ClienteModelView,
-    "Clientes",
-    icon="fa-user",
-    category="Configuraciones",
-    category_icon="fa-info"
+    category_icon="fa-cog"
 )
 
 appbuilder.add_view_no_menu(VentaNuevaView())
