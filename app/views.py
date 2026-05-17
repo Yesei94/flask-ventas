@@ -1,12 +1,13 @@
 import os
 from werkzeug.utils import secure_filename
 from flask_wtf.file import FileField
-from flask import request, current_app
+from flask import request, current_app, jsonify, redirect, url_for
 from markupsafe import Markup
 
 from .extensions import appbuilder, db
 from flask_appbuilder import BaseView, ModelView, expose
 from flask_appbuilder.models.sqla.interface import SQLAInterface
+from flask_appbuilder.security.decorators import has_access
 
 from .models import Categoria, Producto, Venta, Detalleventa, Cliente
 
@@ -195,56 +196,6 @@ class ProductoModelView(ModelView):
 
 
 # =====================================================
-# VENTA
-# =====================================================
-class VentaModelView(ModelView):
-    datamodel = SQLAInterface(Venta)
-
-    label_columns = {
-        "cliente": "Cliente",
-        "producto": "Producto",
-        "cantidad": "Cantidad",
-        "precio_unitario": "Precio Unitario",
-        "total": "Total",
-        "fecha": "Fecha"
-    }
-
-    description_columns = {
-        "cliente": Markup(
-            '¿No encuentras al cliente? '
-            '<a href="/clientemodelview/add" target="_blank" '
-            'class="btn btn-success btn-sm">'
-            '<i class="fa fa-plus"></i> Agregar nuevo cliente</a>'
-        )
-    }
-
-    list_columns = [
-        "cliente",
-        "producto",
-        "cantidad",
-        "precio_unitario",
-        "total",
-        "fecha"
-    ]
-
-    add_columns = [
-        "cliente",
-        "producto",
-        "cantidad",
-        "precio_unitario",
-        "total"
-    ]
-
-    edit_columns = [
-        "cliente",
-        "producto",
-        "cantidad",
-        "precio_unitario",
-        "total"
-    ]
-
-
-# =====================================================
 # DETALLE VENTA
 # =====================================================
 class DetalleventaModelView(ModelView):
@@ -266,21 +217,51 @@ class DetalleventaModelView(ModelView):
         "subtotal"
     ]
 
-    add_columns = [
-        "venta",
-        "producto",
-        "cantidad",
-        "precio_unitario",
-        "subtotal"
-    ]
+    add_columns = ["venta", "producto", "cantidad"]
+    edit_columns = ["venta", "producto", "cantidad"]
 
-    edit_columns = [
-        "venta",
-        "producto",
-        "cantidad",
-        "precio_unitario",
-        "subtotal"
-    ]
+    def pre_add(self, item):
+        item.precio_unitario = item.producto.precio
+        item.subtotal = item.cantidad * item.precio_unitario
+
+    def pre_update(self, item):
+        item.precio_unitario = item.producto.precio
+        item.subtotal = item.cantidad * item.precio_unitario
+
+    def post_add(self, item):
+        self._recalcular_total(item.venta)
+
+    def post_update(self, item):
+        self._recalcular_total(item.venta)
+
+    def post_delete(self, item):
+        self._recalcular_total(item.venta)
+
+    def _recalcular_total(self, venta):
+        venta.total = sum(d.subtotal for d in venta.detalles)
+        db.session.commit()
+
+
+# =====================================================
+# VENTA
+# =====================================================
+class VentaModelView(ModelView):
+    datamodel = SQLAInterface(Venta)
+
+    base_permissions = ["can_list", "can_show", "can_edit", "can_delete"]
+
+    label_columns = {
+        "cliente": "Cliente",
+        "fecha": "Fecha",
+        "total": "Total"
+    }
+
+    list_columns = ["id", "cliente", "fecha", "total"]
+    edit_columns = ["cliente"]
+    show_columns = ["id", "cliente", "fecha", "total"]
+
+    related_views = [DetalleventaModelView]
+    show_template = "appbuilder/general/model/show_cascade.html"
 
 
 # =====================================================
@@ -298,6 +279,64 @@ class ClienteModelView(ModelView):
     list_columns = ["nombre", "apellido", "telefono"]
     add_columns = ["nombre", "apellido", "telefono"]
     edit_columns = ["nombre", "apellido", "telefono"]
+
+
+# =====================================================
+# NUEVA VENTA (Punto de Venta de una sola pantalla)
+# =====================================================
+class VentaNuevaView(BaseView):
+
+    route_base = "/venta"
+
+    @expose("/nueva/")
+    @has_access
+    def nueva(self):
+        clientes = db.session.query(Cliente).order_by(Cliente.nombre).all()
+        productos = (
+            db.session.query(Producto)
+            .filter(Producto.precio.isnot(None))
+            .order_by(Producto.nombre)
+            .all()
+        )
+        return self.render_template(
+            "venta_nueva.html",
+            clientes=clientes,
+            productos=productos
+        )
+
+    @expose("/guardar/", methods=["POST"])
+    @has_access
+    def guardar(self):
+        data = request.get_json(silent=True) or {}
+        cliente_id = data.get("cliente_id")
+        detalles = data.get("detalles", [])
+
+        if not cliente_id or not detalles:
+            return jsonify({"error": "Falta cliente o productos"}), 400
+
+        venta = Venta(cliente_id=int(cliente_id), total=0)
+        db.session.add(venta)
+        db.session.flush()
+
+        total = 0
+        for d in detalles:
+            producto = db.session.get(Producto, int(d["producto_id"]))
+            cantidad = int(d["cantidad"])
+            precio = float(producto.precio)
+            subtotal = cantidad * precio
+            db.session.add(Detalleventa(
+                venta_id=venta.id,
+                producto_id=producto.id,
+                cantidad=cantidad,
+                precio_unitario=precio,
+                subtotal=subtotal
+            ))
+            total += subtotal
+
+        venta.total = total
+        db.session.commit()
+
+        return jsonify({"ok": True, "venta_id": venta.id})
 
 
 # =====================================================
@@ -320,9 +359,9 @@ class ReporteView(BaseView):
 
         venta_por_producto = db.session.query(
             Producto.nombre,
-            db.func.sum(Venta.cantidad)
+            db.func.sum(Detalleventa.cantidad)
         ).join(
-            Venta.producto
+            Detalleventa.producto
         ).group_by(
             Producto.nombre
         ).all()
@@ -363,6 +402,16 @@ appbuilder.add_view(
     category_icon="fa-info"
 )
 
+appbuilder.add_view_no_menu(VentaNuevaView())
+
+appbuilder.add_link(
+    "Nueva Venta",
+    href="/venta/nueva/",
+    icon="fa-cash-register",
+    category="Ventas",
+    category_icon="fa-shopping-cart"
+)
+
 appbuilder.add_view(
     VentaModelView,
     "Ventas",
@@ -371,13 +420,7 @@ appbuilder.add_view(
     category_icon="fa-shopping-cart"
 )
 
-appbuilder.add_view(
-    DetalleventaModelView,
-    "Detalleventas",
-    icon="fa-cart-plus",
-    category="Detalleventas",
-    category_icon="fa-shopping-cart"
-)
+appbuilder.add_view_no_menu(DetalleventaModelView)
 
 # =====================================================
 # REPORTES
