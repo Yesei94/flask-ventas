@@ -8,8 +8,7 @@ from .extensions import appbuilder, db
 from flask_appbuilder import BaseView, ModelView, expose
 from flask_appbuilder.models.sqla.interface import SQLAInterface
 
-from .models import Categoria, Producto, Venta, Detalleventa
-# , Cliente
+from .models import Categoria, Producto, Venta, Detalleventa, Cliente
 
 
 # =====================================================
@@ -202,6 +201,7 @@ class VentaModelView(ModelView):
     datamodel = SQLAInterface(Venta)
 
     label_columns = {
+        "cliente": "Cliente",
         "producto": "Producto",
         "cantidad": "Cantidad",
         "precio_unitario": "Precio Unitario",
@@ -209,7 +209,17 @@ class VentaModelView(ModelView):
         "fecha": "Fecha"
     }
 
+    description_columns = {
+        "cliente": Markup(
+            '¿No encuentras al cliente? '
+            '<a href="/clientemodelview/add" target="_blank" '
+            'class="btn btn-success btn-sm">'
+            '<i class="fa fa-plus"></i> Agregar nuevo cliente</a>'
+        )
+    }
+
     list_columns = [
+        "cliente",
         "producto",
         "cantidad",
         "precio_unitario",
@@ -218,6 +228,7 @@ class VentaModelView(ModelView):
     ]
 
     add_columns = [
+        "cliente",
         "producto",
         "cantidad",
         "precio_unitario",
@@ -225,6 +236,7 @@ class VentaModelView(ModelView):
     ]
 
     edit_columns = [
+        "cliente",
         "producto",
         "cantidad",
         "precio_unitario",
@@ -271,12 +283,22 @@ class DetalleventaModelView(ModelView):
     ]
 
 
-# class ClienteModelView(ModelView):
-#     datamodel = SQLAInterface(Cliente)
+# =====================================================
+# CLIENTE
+# =====================================================
+class ClienteModelView(ModelView):
+    datamodel = SQLAInterface(Cliente)
 
-#     list_columns = ["nombre", "email", "cantidad"]
-#     add_columns = ["nombre", "email", "cantidad"]
-#     edit_columns = ["nombre", "email", "cantidad"]   
+    label_columns = {
+        "nombre": "Nombre",
+        "apellido": "Apellido",
+        "telefono": "Teléfono"
+    }
+
+    list_columns = ["nombre", "apellido", "telefono"]
+    add_columns = ["nombre", "apellido", "telefono"]
+    edit_columns = ["nombre", "apellido", "telefono"]
+
 
 # =====================================================
 # REPORTES
@@ -329,6 +351,14 @@ appbuilder.add_view(
     ProductoModelView,
     "Productos",
     icon="fa-info",
+    category="Configuraciones",
+    category_icon="fa-info"
+)
+
+appbuilder.add_view(
+    ClienteModelView,
+    "Clientes",
+    icon="fa-user",
     category="Configuraciones",
     category_icon="fa-info"
 )

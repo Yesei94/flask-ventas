@@ -81,10 +81,34 @@ class Producto(Model):
         return self.nombre
 
 
+class Cliente(Model):
+    __tablename__="cliente"
+
+    id = Column(Integer, primary_key=True)
+    nombre = Column(String(100), nullable=False)
+    apellido = Column(String(100), nullable=False)
+    telefono = Column(String(20), nullable=True)
+
+    # RELACION CON VENTA
+    ventas = relationship(
+        "Venta",
+        back_populates="cliente"
+    )
+
+    def __repr__(self):
+        return f"{self.nombre} {self.apellido}"
+
+
 class Venta(Model):
     __tablename__="venta"
 
     id = Column(Integer, primary_key=True)
+
+    cliente_id = Column(
+        Integer,
+        ForeignKey("cliente.id"),
+        nullable=False
+    )
 
     producto_id = Column(
         Integer,
@@ -109,6 +133,12 @@ class Venta(Model):
         default=datetime.datetime.utcnow,
         onupdate=datetime.datetime.utcnow,
         nullable=False
+    )
+
+    # RELACION CON CLIENTE
+    cliente = relationship(
+        "Cliente",
+        back_populates="ventas"
     )
 
     # RELACION CON PRODUCTO
@@ -166,10 +196,3 @@ class Detalleventa(Model):
     )
 
 
-# class Cliente (Model):
-#      __tablename__="cliente"
-
-#      id = Column(Integer, primary_key=True)
-#      nombre = Column(String(100), nullable=False)
-#      email = Column(String(100), nullable=False)
-#      cantidad = Column(Integer, nullable=False)
