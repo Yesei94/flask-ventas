@@ -1,0 +1,214 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Clientes Top</title>
+
+    <style>
+
+        *{
+            margin:0;
+            padding:0;
+            box-sizing:border-box;
+            font-family:'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+
+        body{
+            background:#f4f6f9;
+            padding:30px;
+            color:#333;
+        }
+
+        .container{
+            max-width:1100px;
+            margin:auto;
+        }
+
+        .header{
+            background:linear-gradient(135deg,#2563eb,#1e40af);
+            color:white;
+            padding:30px;
+            border-radius:18px;
+            margin-bottom:25px;
+            box-shadow:0px 8px 20px rgba(0,0,0,0.15);
+        }
+
+        .header h1{
+            font-size:34px;
+            margin-bottom:8px;
+        }
+
+        .header p{
+            opacity:0.9;
+        }
+
+        .box{
+            background:white;
+            padding:25px;
+            border-radius:18px;
+            box-shadow:0px 5px 15px rgba(0,0,0,0.08);
+            margin-bottom:25px;
+        }
+
+        h2{
+            color:#1e3a8a;
+            margin-bottom:20px;
+        }
+
+        table{
+            width:100%;
+            border-collapse:collapse;
+        }
+
+        table th{
+            background:#2563eb;
+            color:white;
+            padding:14px;
+            text-align:left;
+        }
+
+        table td{
+            padding:14px;
+            border-bottom:1px solid #e5e7eb;
+        }
+
+        table tr:hover{
+            background:#f8fafc;
+        }
+
+        /* IA */
+
+        .ia-box{
+            background:linear-gradient(135deg,#ffffff,#f8fbff);
+            border-radius:20px;
+            padding:30px;
+            box-shadow:0px 5px 18px rgba(0,0,0,0.08);
+            border:1px solid #dbeafe;
+            position:relative;
+            overflow:hidden;
+        }
+
+        .ia-box::before{
+            content:"🤖";
+            position:absolute;
+            top:-10px;
+            right:20px;
+            font-size:90px;
+            opacity:0.08;
+        }
+
+        .ia-title{
+            display:flex;
+            align-items:center;
+            gap:10px;
+            margin-bottom:20px;
+        }
+
+        .ia-title h2{
+            margin:0;
+            font-size:28px;
+        }
+
+        .badge{
+            background:#2563eb;
+            color:white;
+            padding:6px 14px;
+            border-radius:30px;
+            font-size:13px;
+            font-weight:bold;
+        }
+
+        .ia-content{
+            background:white;
+            padding:22px;
+            border-radius:15px;
+            line-height:1.9;
+            font-size:17px;
+            color:#374151;
+            border-left:6px solid #2563eb;
+            white-space:pre-line;
+            box-shadow:inset 0px 0px 10px rgba(37,99,235,0.05);
+        }
+
+        @media(max-width:900px){
+
+            body{
+                padding:15px;
+            }
+
+            table{
+                display:block;
+                overflow-x:auto;
+            }
+
+            .header h1{
+                font-size:28px;
+            }
+
+            .ia-title h2{
+                font-size:22px;
+            }
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+
+    <!-- HEADER -->
+    <div class="header">
+        <h1>👥 Reporte de Clientes</h1>
+        <p>Clientes con más compras y mayores ingresos</p>
+    </div>
+
+    <!-- TABLA -->
+    <div class="box">
+
+        <h2>📋 Clientes Destacados</h2>
+
+        <table>
+
+            <thead>
+                <tr>
+                    <th>Cliente</th>
+                    <th>Total Compras</th>
+                    <th>Total Gastado</th>
+                </tr>
+            </thead>
+
+            <tbody>
+
+                {% for c in clientes_top %}
+                <tr>
+                    <td>{{ c[0] }} {{ c[1] }}</td>
+                    <td>{{ c[2] }}</td>
+                    <td>Bs. {{ c[3] }}</td>
+                </tr>
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <!-- IA -->
+    <div class="ia-box">
+
+        <div class="ia-title">
+            <h2>Análisis Inteligente</h2>
+            <span class="badge">IA</span>
+        </div>
+
+        <div class="ia-content">
+            {{ analisis_ia }}
+        </div>
+
+    </div>
+
+</div>
+
+</body>
+</html>
