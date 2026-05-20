@@ -16,3 +16,7 @@ Base Skeleton to start your application using Flask-AppBuilder
 
 
 That's it!!
+
+# INTEGRANTES DEL GRUPO:
+# Raymond Jesus Panozo Crespo
+# Yesica Zenteno Sullcani

@@ -173,5 +173,3 @@ class Detalleventa(Model):
         "Producto",
         back_populates="detalleventas"
     )
-
-
