@@ -1,6 +1,7 @@
 {% extends "appbuilder/base.html" %}
 
 {% block content %}
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <style>
 
         .container{
@@ -106,13 +107,44 @@
             background:white;
             padding:22px;
             border-radius:15px;
-            line-height:1.9;
-            font-size:17px;
+            line-height:1.7;
+            font-size:16px;
             color:#374151;
             border-left:6px solid #2563eb;
-            white-space:pre-line;
             box-shadow:inset 0px 0px 10px rgba(37,99,235,0.05);
         }
+
+        .ia-content h1, .ia-content h2, .ia-content h3, .ia-content h4{
+            color:#1e40af;
+            margin-top:14px;
+            margin-bottom:8px;
+        }
+        .ia-content ul, .ia-content ol{
+            padding-left:24px;
+            margin:8px 0;
+        }
+        .ia-content p{
+            margin:8px 0;
+        }
+
+        .ia-spinner{
+            display:flex;
+            align-items:center;
+            gap:12px;
+            padding:20px 0;
+            color:#6b7280;
+            font-style:italic;
+        }
+        .ia-spinner::before{
+            content:"";
+            width:28px;
+            height:28px;
+            border:4px solid #dbeafe;
+            border-top-color:#2563eb;
+            border-radius:50%;
+            animation:spin 1s linear infinite;
+        }
+        @keyframes spin{ to { transform:rotate(360deg); } }
 
         @media(max-width:900px){
 
@@ -183,11 +215,20 @@
             <span class="badge">IA</span>
         </div>
 
-        <div class="ia-content">
-            {{ analisis_ia }}
+        <div class="ia-content" data-analisis-url="/reportes/clientes/analisis/">
+            <div class="ia-spinner">Generando análisis con IA...</div>
         </div>
 
     </div>
 
 </div>
+
+<script>
+document.querySelectorAll('.ia-content[data-analisis-url]').forEach(el => {
+    fetch(el.dataset.analisisUrl)
+        .then(r => r.json())
+        .then(data => { el.innerHTML = marked.parse(data.analisis || ''); })
+        .catch(() => { el.innerHTML = '<em style="color:#dc2626;">No se pudo cargar el análisis.</em>'; });
+});
+</script>
 {% endblock %}

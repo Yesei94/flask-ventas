@@ -347,111 +347,94 @@ class ReporteView(BaseView):
     route_base = '/reportes'
 
     # =================================================
-    # REPORTE PRINCIPAL
+    # HELPERS de queries
     # =================================================
-    @expose("/")
-    def index(self):
-
-        total_ventas = db.session.query(Venta).count()
-
-        total_ingresos = db.session.query(
-            db.func.sum(Venta.total)
-        ).scalar() or 0
-
-        venta_por_producto = db.session.query(
+    def _venta_por_producto(self):
+        return db.session.query(
             Producto.nombre,
             db.func.sum(Detalleventa.cantidad)
         ).join(
             Detalleventa,
             Producto.id == Detalleventa.producto_id
-        ).group_by(
-            Producto.nombre
-        ).all()
+        ).group_by(Producto.nombre).all()
 
-        recomendacion_venta = ""
-
-        for producto, cantidad in venta_por_producto:
-            recomendacion_venta += f"{producto}: {cantidad} ventas. "
-
-        analisis_venta = analizar_ventas(recomendacion_venta)
-
-        return self.render_template(
-            "reportes.html",
-            t_ventas=total_ventas,
-            t_ingresos=total_ingresos,
-            venta_por_producto=venta_por_producto,
-            analisis_ia=analisis_venta
-        )
-
-    # =================================================
-    # REPORTE 2 - CLIENTES CON MÁS COMPRAS
-    # =================================================
-    @expose("/clientes/")
-    def reporte_clientes(self):
-
-        clientes_top = db.session.query(
+    def _clientes_top(self):
+        return db.session.query(
             Cliente.nombre,
             Cliente.apellido,
             db.func.count(Venta.id),
             db.func.sum(Venta.total)
         ).join(
-            Venta,
-            Cliente.id == Venta.cliente_id
-        ).group_by(
-            Cliente.nombre,
-            Cliente.apellido
-        ).all()
+            Venta, Cliente.id == Venta.cliente_id
+        ).group_by(Cliente.nombre, Cliente.apellido).all()
 
-        texto_clientes = ""
-
-        for c in clientes_top:
-
-            texto_clientes += (
-                f"Cliente: {c[0]} {c[1]}, "
-                f"Compras: {c[2]}, "
-                f"Total: {c[3]}. "
-            )
-
-        analisis_ia = analizar_clientes(texto_clientes)
-
-        return self.render_template(
-            "reporte_clientes.html",
-            clientes_top=clientes_top,
-            analisis_ia=analisis_ia
-        )
+    def _productos_ingresos(self):
+        return db.session.query(
+            Producto.nombre,
+            db.func.sum(Detalleventa.subtotal)
+        ).join(
+            Detalleventa, Producto.id == Detalleventa.producto_id
+        ).group_by(Producto.nombre).all()
 
     # =================================================
-    # REPORTE 3 - PRODUCTOS MÁS INGRESOS
+    # REPORTE PRINCIPAL (render rapido, IA via AJAX)
+    # =================================================
+    @expose("/")
+    def index(self):
+        total_ventas = db.session.query(Venta).count()
+        total_ingresos = db.session.query(db.func.sum(Venta.total)).scalar() or 0
+        return self.render_template(
+            "reportes.html",
+            t_ventas=total_ventas,
+            t_ingresos=total_ingresos,
+            venta_por_producto=self._venta_por_producto()
+        )
+
+    @expose("/analisis/")
+    @has_access
+    def analisis_ventas(self):
+        texto = "".join(
+            f"{p}: {c} ventas. " for p, c in self._venta_por_producto()
+        )
+        return jsonify({"analisis": analizar_ventas(texto)})
+
+    # =================================================
+    # REPORTE 2 - CLIENTES
+    # =================================================
+    @expose("/clientes/")
+    def reporte_clientes(self):
+        return self.render_template(
+            "reporte_clientes.html",
+            clientes_top=self._clientes_top()
+        )
+
+    @expose("/clientes/analisis/")
+    @has_access
+    def analisis_clientes(self):
+        texto = "".join(
+            f"Cliente: {c[0]} {c[1]}, Compras: {c[2]}, Total: {c[3]}. "
+            for c in self._clientes_top()
+        )
+        return jsonify({"analisis": analizar_clientes(texto)})
+
+    # =================================================
+    # REPORTE 3 - PRODUCTOS
     # =================================================
     @expose("/productos/")
     def reporte_productos(self):
-
-        productos_ingresos = db.session.query(
-        Producto.nombre,
-        db.func.sum(Detalleventa.subtotal)
-        ).join(
-            Detalleventa,
-            Producto.id == Detalleventa.producto_id
-        ).group_by(
-            Producto.nombre
-        ).all()
-
-        texto_productos = ""
-
-        for p in productos_ingresos:
-
-            texto_productos += (
-                f"Producto: {p[0]}, "
-                f"Ingresos: {p[1]}. "
-            )
-
-        analisis_ia = analizar_productos(texto_productos)
-
         return self.render_template(
             "reporte_productos.html",
-            productos_ingresos=productos_ingresos,
-            analisis_ia=analisis_ia
+            productos_ingresos=self._productos_ingresos()
         )
+
+    @expose("/productos/analisis/")
+    @has_access
+    def analisis_productos(self):
+        texto = "".join(
+            f"Producto: {p[0]}, Ingresos: {p[1]}. "
+            for p in self._productos_ingresos()
+        )
+        return jsonify({"analisis": analizar_productos(texto)})
     
 # =====================================================
 # REGISTRO DE VISTAS
